@@ -8,12 +8,12 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     
     float t = iTime;
     
-    // Table of light circle centre positions (values between 0 and 1)
+    // Tableau de positions des centres des cercles lumineux (valeurs entre 0 et 1)
     vec2 centers[3];
-    centers[0] = vec2(0.3, 0.5);
-    centers[1] = vec2(0.7, 0.6);
-    centers[2] = vec2(0.5, 0.3);
-
+    centers[0] = vec2(0.5) + 0.2 * vec2(cos(t), sin(t));
+    centers[1] = vec2(0.5) + 0.3 * vec2(cos(t + 2.0), sin(t + 2.0));
+    centers[2] = vec2(0.5) + 0.25 * vec2(cos(t + 4.0), sin(t + 4.0));
+    
     for (int i = 0; i < 3; i++) {
         vec2 fromCenterToPoint = uv - centers[i]; //Vector  between a point and the center
         fromCenterToPoint.x *= iResolution.x / iResolution.y; // Corrects the ratio for a true circle
