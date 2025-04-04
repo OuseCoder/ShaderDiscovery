@@ -78,13 +78,13 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     }
     
     
-    //STRANGE FORM GRAITATING
+    //STRANGE FORM GRAVITATING
     // Table of light circle centre positions (values between 0 and 1)
     vec2 centers[6];
     centers[0] = vec2(0.5) + 0.2 * vec2(cos(t), sin(t)); // center + radius * define rotation movement   
     centers[1] = vec2(0.5) + 0.2 * vec2(cos(t + 2.0), sin(t + 2.0));
     centers[2] = vec2(0.5) + 0.2 * vec2(cos(t + 4.0), sin(t + 4.0));
-    centers[3] = vec2(0.5) + 0.25 * vec2(cos(t), sin(t)); //
+    centers[3] = vec2(0.5) + 0.25 * vec2(cos(t), sin(t)); 
     centers[4] = vec2(0.5) + 0.25 * vec2(cos(t + 2.0), sin(t + 2.0));
     centers[5] = vec2(0.5) + 0.25 * vec2(cos(t + 4.0), sin(t + 4.0));    
   
@@ -101,23 +101,18 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         backgroundcolor += m; //Addition of the color
     }
     
-   
+
+     // --- ORANGE FIXED STAR ---
+    vec2 sunCenter = vec2(0.5, 0.5); // position of the "sun"
+    vec2 fromSun = uv - sunCenter;
+    fromSun.x *= iResolution.x / iResolution.y;
+    float distToSun = length(fromSun);
+
+    float orangeGlow = 0.02 / distToSun;
+    vec3 orangeColor = vec3(0.953,0.494,0.071); // orange color
+
+    backgroundcolor += orangeColor * orangeGlow;
     
-    // --- CRESCENT MOON IN THE CENTER ---
-    vec2 moonCenter = vec2(0.9, 0.5);
-    vec2 moonUV = uv;
-    moonUV.x *= iResolution.x / iResolution.y; // Ratio correction for round shapes
-
-    float radius = 0.07;
-
-    float distToMainCircle = length(moonUV - moonCenter);
-    float distToCutCircle  = length(moonUV - (moonCenter + vec2(0.02, 0.0)));
-
-    float moonShape = smoothstep(radius, radius - 0.005, distToMainCircle)
-                    * (1.0 - smoothstep(radius, radius - 0.005, distToCutCircle));
-
-    vec3 moonColor = vec3(1.000,1.000,0.761); // Slightly yellow moon
-    backgroundcolor = mix(backgroundcolor, moonColor, moonShape);
     
       
 
@@ -145,6 +140,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
    
     backgroundcolor += shootingColor;
 
+    
     
 
        
