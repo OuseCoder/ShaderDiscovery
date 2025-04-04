@@ -52,7 +52,20 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // fragCoord : screen pixel coordinates (in pixels), like (0,0) at bottom left.
     
     vec2 uv = fragCoord.xy / iResolution.xy;  //transformed pixel coordinates
-    vec3 backgroundcolor = mix( vec3(0.553,0.749,0.949),  vec3(0.055,0.118,0.306) , sqrt(uv.y)*1.2); ; //  Create color with RGB
+    
+    
+    vec3 horizonColor = vec3(1.0, 0.5, 0.2); // warm orange at the bottom
+    vec3 horizonUpColor = vec3(0.965,0.945,0.933); // light orange
+    vec3 midColor = vec3(0.553,0.749,0.949); // transition to blue/white
+    vec3 topColor = vec3(0.055,0.118,0.306); // very dark sky / night
+    
+    // Interpolation in 3 stages
+    vec3 bottom = mix(horizonColor, horizonUpColor, sqrt(uv.y)*0.5);
+    vec3 bottomToMid = mix(bottom, midColor, sqrt(uv.y)*1.2);
+    vec3 fullGradient = mix(bottomToMid, topColor, sqrt(uv.y)*1.2);
+
+    vec3 backgroundcolor = fullGradient;
+    
    //vec3 backgroundcolor = vec3(0);
     float t = iTime;
     
