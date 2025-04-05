@@ -1,8 +1,7 @@
 #define S(a,b,t) smoothstep(a,b,t)
 #define ROT -0.785398
-#define ZOOM .25
-#define STAR_SPEED 2.
-
+#define ZOOM .5
+#define STAR_SPEED 2.0
 
 
 float N21(vec2 p) {
@@ -54,6 +53,14 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec2 uv = fragCoord.xy / iResolution.xy;  //transformed pixel coordinates
     
     
+    // Lire les données du buffer
+    vec4 paletteData = texture(iChannel0, vec2(0.5));
+    float transitionAmount = paletteData.b;
+    
+    // --- PALETTE A : ciel nuit bleu
+    vec3 paletteA = mix(vec3(0.553, 0.749, 0.949), vec3(0.055, 0.118, 0.306), sqrt(uv.y) * 1.2);
+
+    // --- PALETTE B : ciel orange vers bleu
     vec3 horizonColor = vec3(1.0, 0.5, 0.2); // warm orange at the bottom
     vec3 horizonUpColor = vec3(0.965,0.945,0.933); // light orange
     vec3 midColor = vec3(0.553,0.749,0.949); // transition to blue/white
@@ -62,11 +69,12 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // Interpolation in 3 stages
     vec3 bottom = mix(horizonColor, horizonUpColor, sqrt(uv.y)*0.5);
     vec3 bottomToMid = mix(bottom, midColor, sqrt(uv.y)*1.2);
-    vec3 fullGradient = mix(bottomToMid, topColor, sqrt(uv.y)*1.2);
+    vec3 paletteB  = mix(bottomToMid, topColor, sqrt(uv.y)*1.2);
 
-    vec3 backgroundcolor = fullGradient;
+     // Interpolation douce contrôlée par le buffer
+    vec3 backgroundcolor = mix(paletteB, paletteA, transitionAmount);
+    //vec3 backgroundcolor = fullGradient;
     
-   //vec3 backgroundcolor = vec3(0);
     float t = iTime;
     
     
@@ -121,7 +129,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     fromSun.x *= iResolution.x / iResolution.y;
     float distToSun = length(fromSun);
 
-    float orangeGlow = 0.02 / distToSun;
+    float orangeGlow = 0.04 / distToSun;
     vec3 orangeColor = vec3(0.953,0.494,0.071); // orange color
 
     backgroundcolor += orangeColor * orangeGlow;
@@ -147,14 +155,35 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
     float star1 = ShootingStar(rv1);
     float star2 = ShootingStar(rv2);
+    float stars = clamp(star1 + star2, 0.0, 1.0);
 
-   // vec3 shootingColor = vec3(1.0, 1.0, 0.8) * clamp(star1 + star2, 0.0, 1.0);
-     vec3 shootingColor = vec3(1.000,0.639,0.639) * clamp(star1 + star2, 0.0, 1.0);
-   
+
+    // Read the transition factor from the buffer
+    transitionAmount = texture(iChannel0, vec2(0.5)).b;
+
+    // Original pink colour
+    vec3 colorA = vec3(1.000, 0.639, 0.639);
+    // Couleur autre pour la version nuit
+    vec3 colorB =  vec3(0.000,0.298,1.000);
+
+    // Interpolation between the two colours
+    vec3 shootingColor = mix(colorA, colorB, transitionAmount) * stars;
+
     backgroundcolor += shootingColor;
+    
+    
+    
+    // Read the state from Buffer A to create a purple effect
+    float activated = texture(iChannel0, vec2(0.5)).r;
 
+    if (activated > 0.01) {
+        // Magic effect
+        float dist = distance(uv, vec2(0.5, 0.5)); // central position (the ‘sun’)
+        float magic = smoothstep(0.2, 0.0, dist) * sin(iTime * 7.0) * activated;
+        backgroundcolor += vec3(1.000,0.302,0.000) * magic; //Define the color change
+    }
     
-    
+
 
        
     fragColor = vec4(backgroundcolor, 1.0); // Define the color  
