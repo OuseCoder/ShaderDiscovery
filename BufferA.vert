@@ -2,7 +2,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 {
     vec2 uv = fragCoord.xy / iResolution.xy;
 
-    vec4 state = texture(iChannel0, vec2(0.5)); // r = paletteTarget, g = mouseHold, b = transitionAmount
+    vec4 state = texture(iChannel0, vec2(0.5));
     float paletteTarget = state.r;
     float wasMouseDown = state.g;
     float transitionAmount = state.b;

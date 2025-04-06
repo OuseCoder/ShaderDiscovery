@@ -43,24 +43,15 @@ float ShootingStar(vec2 uv) {
 float rand(vec2 co) {
         return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
-    
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
-{
-    // fragColor : the pixel's output color.
-    // fragCoord : screen pixel coordinates (in pixels), like (0,0) at bottom left.
-    
-    vec2 uv = fragCoord.xy / iResolution.xy;  //transformed pixel coordinates
-    
-    
-    // Lire les données du buffer
-    vec4 paletteData = texture(iChannel0, vec2(0.5));
-    float transitionAmount = paletteData.b;
-    
-    // --- PALETTE A : ciel nuit bleu
+
+// Create the sky color
+vec3 getBackgroundColor(vec2 uv, float transitionAmount) {
+
+    // --- PALETTE A: Blue night sky
     vec3 paletteA = mix(vec3(0.553, 0.749, 0.949), vec3(0.055, 0.118, 0.306), sqrt(uv.y) * 1.2);
 
-    // --- PALETTE B : ciel orange vers bleu
+    // --- PALETTE B : orange sky to blue sky
     vec3 horizonColor = vec3(1.0, 0.5, 0.2); // warm orange at the bottom
     vec3 horizonUpColor = vec3(0.965,0.945,0.933); // light orange
     vec3 midColor = vec3(0.553,0.749,0.949); // transition to blue/white
@@ -72,21 +63,21 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     vec3 paletteB  = mix(bottomToMid, topColor, sqrt(uv.y)*1.2);
 
      // Interpolation douce contrôlée par le buffer
-    vec3 backgroundcolor = mix(paletteB, paletteA, transitionAmount);
-    //vec3 backgroundcolor = fullGradient;
-    
-    float t = iTime;
-    
-    
-              // --- SMALL FIXED TWINKLING STARS ---
+    return mix(paletteB, paletteA, transitionAmount);
+
+}
+
+vec3 drawTwinklingStars(vec2 uv, float t) {
+
+    // --- SMALL FIXED TWINKLING STARS ---
     float starDensity = 40.0; //Define the number of stars
     vec2 gridUV = floor(uv * starDensity) / starDensity;
-    
+
     float sparkle = rand(gridUV);
     float starThreshold = 0.85; // Adjust this threshold to get more or fewer stars
     if (sparkle > starThreshold) {
         float localTime = t * 5.0 + sparkle * 10.0;
-        
+
         // Introduces a random frequency and phase per star
         float blinkSpeed = mix(2.0, 6.0, rand(gridUV + 1.234)); // entre 2 et 6
         float blinkPhase = rand(gridUV + 4.567) * 6.28;         // entre 0 et 2*PI
@@ -95,10 +86,15 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 
         float distToStar = length(fract(uv * starDensity) - 0.5);
         float star = smoothstep(0.06, 0.0, distToStar) * blink;
-        backgroundcolor += vec3(star);
+        return vec3(star);
     }
-    
-    
+    return vec3(0.0);
+
+}
+
+
+vec3 drawGravitatingForms(vec2 uv, float t) {
+
     //STRANGE FORM GRAVITATING
     // Table of light circle centre positions (values between 0 and 1)
     vec2 centers[6];
@@ -109,9 +105,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     centers[4] = vec2(0.5) + 0.25 * vec2(cos(t + 2.0), sin(t + 2.0));
     centers[5] = vec2(0.5) + 0.25 * vec2(cos(t + 4.0), sin(t + 4.0));    
   
-   
     // Synchronised pulse: same value for all stars
     float pulse = 0.003 + 0.005 * sin(t * 1.0); // all the stars are pulsating together
+    vec3 glow = vec3(0.0);
     
     for (int i = 0; i < 6; i++) {
         vec2 fromCenterToPoint = uv - centers[i]; // Vector between a point and the center
@@ -119,10 +115,15 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
         float fromCenterToPointDistance = length(fromCenterToPoint); //Distance between uv and center
         
         float m = pulse /fromCenterToPointDistance; //To simulate the light
-        backgroundcolor += m; //Addition of the color
+        glow += m; //Addition of the color
     }
     
+    return glow ;
+}
 
+
+
+vec3 drawSunGlow(vec2 uv) {
      // --- ORANGE FIXED STAR ---
     vec2 sunCenter = vec2(0.5, 0.5); // position of the "sun"
     vec2 fromSun = uv - sunCenter;
@@ -132,10 +133,25 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     float orangeGlow = 0.04 / distToSun;
     vec3 orangeColor = vec3(0.953,0.494,0.071); // orange color
 
-    backgroundcolor += orangeColor * orangeGlow;
-    
-    
-      
+    return orangeColor * orangeGlow;
+
+}
+
+
+vec3 drawMagicEffect(vec2 uv, float t, float activated) {
+    if (activated > 0.01) {
+        // Magic effect
+        float dist = distance(uv, vec2(0.5, 0.5)); // central position (the ‘sun’)
+        float magic = smoothstep(0.2, 0.0, dist) * sin(iTime * 7.0) * activated;
+        return vec3(1.000,0.302,0.000) * magic; //Define the color change
+    } 
+    return vec3(0.0);
+}
+
+
+
+
+vec3 drawShootingStars(vec2 fragCoord, float t, float transitionAmount) {
 
     // --- SHOOTING STARS ---
     vec2 shootingUV = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
@@ -169,22 +185,27 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     // Interpolation between the two colours
     vec3 shootingColor = mix(colorA, colorB, transitionAmount) * stars;
 
-    backgroundcolor += shootingColor;
-    
-    
-    
-    // Read the state from Buffer A to create a purple effect
-    float activated = texture(iChannel0, vec2(0.5)).r;
+    return shootingColor; 
 
-    if (activated > 0.01) {
-        // Magic effect
-        float dist = distance(uv, vec2(0.5, 0.5)); // central position (the ‘sun’)
-        float magic = smoothstep(0.2, 0.0, dist) * sin(iTime * 7.0) * activated;
-        backgroundcolor += vec3(1.000,0.302,0.000) * magic; //Define the color change
-    }
+}
     
 
+void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
 
-       
+    vec2 uv = fragCoord.xy / iResolution.xy;  //transformed pixel coordinates
+    float t = iTime;
+    
+    // Read buffer data
+    vec4 paletteData = texture(iChannel0, vec2(0.5));
+    float transitionAmount = paletteData.b;
+    float activated = texture(iChannel0, vec2(0.5)).r; // Read the state from Buffer A to create a purple effect
+    
+    vec3 backgroundcolor = vec3(0.0);
+    backgroundcolor += getBackgroundColor(uv, transitionAmount); // Create the sky
+    backgroundcolor += drawTwinklingStars(uv, t); // Create the stars
+    backgroundcolor += drawGravitatingForms(uv, t); // Create the white/black forms
+    backgroundcolor += drawSunGlow(uv); // Create the glowing sun
+    backgroundcolor += drawShootingStars(fragCoord, t, transitionAmount); // Create the shooting stars
+    backgroundcolor += drawMagicEffect(uv, t, activated); // Create the magic effect when clicking on the sun
     fragColor = vec4(backgroundcolor, 1.0); // Define the color  
 }
